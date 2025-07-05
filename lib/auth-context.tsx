@@ -72,7 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      console.log('User changed, fetching credits for:', user.id);
+      fetchUserCredits(user.id);
+    }
+  }, [user]);
+
   const fetchUserCredits = async (userId: string) => {
+    console.log('Fetching credits for user:', userId);
     const { data, error } = await supabase
       .from('users')
       .select('credits')
@@ -83,7 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCredits(data.credits);
       console.log('Fetched credits:', data.credits);
     } else if (error) {
-      console.log('Error fetching credits:', error);
+      setCredits(0);
+      console.error('Error fetching credits:', error);
     }
   };
 
