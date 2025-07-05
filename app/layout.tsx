@@ -1,6 +1,5 @@
-import type { Metadata } from 'next'
 import './globals.css'
-import { AuthProvider } from '@/lib/auth-context'
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'InstantList.ai - AI Website Builder',
@@ -16,9 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="h-full bg-background font-sans antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        {children}
       </body>
     </html>
   )

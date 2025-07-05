@@ -1,12 +1,13 @@
 'use client';
 
+import { AuthProvider } from '@/lib/auth-context';
 import { useAuth } from '@/lib/auth-context';
 import { AuthForm } from '@/components/auth-form';
 import { WebsiteBuilder } from '@/components/website-builder';
 import { Header } from '@/components/header';
 import { Sparkles, Zap, Globe, Download, ArrowRight, Check } from '@/lib/icons';
 
-export default function HomePage() {
+function HomeContent() {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -238,5 +239,13 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <AuthProvider>
+      <HomeContent />
+    </AuthProvider>
   );
 }
