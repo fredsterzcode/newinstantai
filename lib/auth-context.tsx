@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Only initialize if Supabase is properly configured
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
+      console.log('Supabase env vars missing');
       return;
     }
 
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserCredits(session.user.id);
       }
       setLoading(false);
+      console.log('Initial session:', session);
     });
 
     // Listen for auth changes
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCredits(0);
       }
       setLoading(false);
+      console.log('Auth state changed:', event, session);
     });
 
     return () => subscription.unsubscribe();
@@ -66,6 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setCredits(data.credits);
+      console.log('Fetched credits:', data.credits);
+    } else if (error) {
+      console.log('Error fetching credits:', error);
     }
   };
 
