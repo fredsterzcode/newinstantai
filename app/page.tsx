@@ -1,33 +1,20 @@
 'use client';
 export const dynamic = "force-dynamic";
 
-import { AuthProvider } from '@/lib/auth-context';
-import { useAuth } from '@/lib/auth-context';
-import { AuthForm } from '@/components/auth-form';
-import { WebsiteBuilder } from '@/components/website-builder';
-import { Header } from '@/components/header';
+import { useState, useEffect } from 'react';
 import { Sparkles, Zap, Globe, Download, ArrowRight, Check } from '@/lib/icons';
 
-function HomeContent() {
-  const { user, loading } = useAuth();
+// Simple loading component
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+    </div>
+  );
+}
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <WebsiteBuilder />
-      </div>
-    );
-  }
-
+// Landing page content (no auth dependencies)
+function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -236,14 +223,63 @@ function HomeContent() {
       {/* Auth Modal */}
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <AuthForm />
+          <div className="card">
+            <div className="card-header text-center">
+              <h1 className="card-title">Welcome to InstantList.ai</h1>
+              <p className="card-description">
+                Sign in to start building amazing websites with AI
+              </p>
+            </div>
+            <div className="card-content text-center">
+              <p className="text-muted-foreground">
+                Authentication is loading...
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+// Main component that conditionally loads auth
 export default function HomePage() {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <LandingPage />;
+  }
+
+  // Only import auth components after client-side hydration
+  const { AuthProvider } = require('@/lib/auth-context');
+  const { useAuth } = require('@/lib/auth-context');
+  const { AuthForm } = require('@/components/auth-form');
+  const { WebsiteBuilder } = require('@/components/website-builder');
+  const { Header } = require('@/components/header');
+
+  function HomeContent() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+      return <LoadingSpinner />;
+    }
+
+    if (user) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Header />
+          <WebsiteBuilder />
+        </div>
+      );
+    }
+
+    return <LandingPage />;
+  }
+
   return (
     <AuthProvider>
       <HomeContent />
