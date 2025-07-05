@@ -12,7 +12,7 @@ export function AuthForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +22,7 @@ export function AuthForm() {
 
     if (isSignUp) {
       const { error } = await signUp(email, password);
+      console.log('signUp result:', error);
       if (error) {
         setError(error.message || 'Error signing up');
       } else {
@@ -29,6 +30,8 @@ export function AuthForm() {
       }
     } else {
       const { error } = await signIn(email, password);
+      console.log('signIn result:', error);
+      console.log('After signIn: user', user, 'authLoading', authLoading);
       if (error) {
         setError(error.message || 'Error signing in');
       }

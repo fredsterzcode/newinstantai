@@ -24,14 +24,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [credits, setCredits] = useState(0);
 
   useEffect(() => {
-    // Only initialize if Supabase is properly configured
+    console.log('AuthProvider useEffect running');
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
       console.log('Supabase env vars missing');
       return;
     }
-
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -40,12 +38,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
       console.log('Initial session:', session);
+      console.log('After getSession: user', session?.user, 'session', session, 'loading', false);
     });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -55,9 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
       console.log('Auth state changed:', event, session);
+      console.log('After onAuthStateChange: user', session?.user, 'session', session, 'loading', false);
     });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      console.log('AuthProvider useEffect cleanup');
+    };
   }, []);
 
   const fetchUserCredits = async (userId: string) => {
