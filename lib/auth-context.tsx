@@ -27,12 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     console.log('AuthProvider useEffect running');
+    let timeoutId: NodeJS.Timeout;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
       console.log('Supabase env vars missing');
       return;
     }
+    // Fallback: always set loading to false after 5 seconds
+    timeoutId = setTimeout(() => {
+      setLoading(false);
+      console.log('AuthProvider fallback: loading set to false after timeout');
+    }, 5000);
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeoutId);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -41,6 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       console.log('Initial session:', session);
       console.log('After getSession: user', session?.user, 'session', session, 'loading', false);
+    }).catch((err) => {
+      clearTimeout(timeoutId);
+      setLoading(false);
+      console.error('Error fetching session:', err);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
@@ -55,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('After onAuthStateChange: user', session?.user, 'session', session, 'loading', false);
     });
     return () => {
+      clearTimeout(timeoutId);
       subscription.unsubscribe();
       console.log('AuthProvider useEffect cleanup');
     };
