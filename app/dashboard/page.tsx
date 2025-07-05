@@ -1,8 +1,16 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import { Header } from '@/components/header';
+
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+    </div>
+  );
+}
 
 function DashboardContent() {
   const { user, loading } = useAuth();
@@ -14,7 +22,7 @@ function DashboardContent() {
     }
   }, [user, loading, router]);
 
-  if (loading) return null;
+  if (loading) return <LoadingSpinner />;
   if (!user) return null;
 
   return (
@@ -28,9 +36,9 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <AuthProvider>
+    <>
       <Header />
       <DashboardContent />
-    </AuthProvider>
+    </>
   );
 } 
