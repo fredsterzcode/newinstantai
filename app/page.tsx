@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = "force-dynamic";
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { Sparkles, Zap, Globe, Download, ArrowRight, Check } from '@/lib/icons';
 
 // Simple loading component
@@ -14,7 +14,7 @@ function LoadingSpinner() {
 }
 
 // Landing page content (no auth dependencies)
-function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
+function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -38,10 +38,10 @@ function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="btn-primary text-lg px-8 py-4" onClick={onGetStarted}>
+              <Link href="/auth" className="btn-primary text-lg px-8 py-4 flex items-center justify-center">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </button>
+              </Link>
               <button className="btn-secondary text-lg px-8 py-4">
                 Watch Demo
               </button>
@@ -194,9 +194,9 @@ function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
                   </li>
                 </ul>
                 
-                <button className="btn-primary w-full" onClick={onGetStarted}>
+                <Link href="/auth" className="btn-primary w-full flex items-center justify-center">
                   Get Started
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -213,60 +213,16 @@ function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
             Join thousands of creators who are building amazing websites with AI. 
             Start your journey today.
           </p>
-          <button className="btn-primary text-lg px-8 py-4" onClick={onGetStarted}>
+          <Link href="/auth" className="btn-primary text-lg px-8 py-4 flex items-center justify-center">
             Start Building Now
             <ArrowRight className="ml-2 h-5 w-5" />
-          </button>
+          </Link>
         </div>
       </section>
     </div>
   );
 }
 
-// Main component that conditionally loads auth
 export default function HomePage() {
-  const [showAuth, setShowAuth] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [user, setUser] = useState(null);
-
-  // Dynamically import AuthProvider and useAuth only when needed
-  let AuthProvider, useAuth, AuthForm, WebsiteBuilder, Header;
-  if (showAuth || isAuthed) {
-    AuthProvider = require('@/lib/auth-context').AuthProvider;
-    useAuth = require('@/lib/auth-context').useAuth;
-    AuthForm = require('@/components/auth-form').AuthForm;
-    WebsiteBuilder = require('@/components/website-builder').WebsiteBuilder;
-    Header = require('@/components/header').Header;
-  }
-
-  // Authenticated app content
-  function AppContent() {
-    const { user, loading } = useAuth();
-    if (loading) return null;
-    if (user) return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <WebsiteBuilder />
-      </div>
-    );
-    // If not authed, close modal and show landing page
-    setShowAuth(false);
-    return null;
-  }
-
-  return (
-    <>
-      <LandingPage onGetStarted={() => setShowAuth(true)} />
-      {showAuth && AuthProvider && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="w-full max-w-md">
-            <AuthProvider>
-              <AuthForm />
-              <AppContent />
-            </AuthProvider>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return <LandingPage />;
 }
