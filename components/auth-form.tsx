@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Eye, EyeOff, Loader2 } from '@/lib/icons';
+import { useRouter } from 'next/navigation';
 
 export function AuthForm() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -13,6 +14,13 @@ export function AuthForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { signIn, signUp, user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
