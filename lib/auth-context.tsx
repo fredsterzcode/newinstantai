@@ -15,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateCredits: (credits: number) => Promise<void>;
   credits: number;
+  refreshCredits: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,16 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (user && session) {
-      console.log('User and session present, fetching credits for:', user.id);
-      fetchUserCredits(user.id, session.access_token);
-    } else if (!user) {
-      setCredits(0);
-      console.log('No user, credits set to 0');
-    }
-  }, [user, session]);
-
   const fetchUserCredits = async (userId: string, accessToken?: string) => {
     console.log('Fetching credits for user:', userId, 'with token:', !!accessToken);
     if (!accessToken) {
@@ -111,15 +102,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCredits = async (newCredits: number) => {
-    if (!user) return;
-    
+    if (!user || !session) return;
     const { error } = await supabase
       .from('users')
       .update({ credits: newCredits })
       .eq('id', user.id);
-
     if (!error) {
-      setCredits(newCredits);
+      // Instead of setting credits directly, re-fetch from API for consistency
+      await fetchUserCredits(user.id, session.access_token);
     }
   };
 
@@ -143,6 +133,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  // Add a manual refreshCredits function for debugging/UI
+  const refreshCredits = async () => {
+    if (user && session) {
+      await fetchUserCredits(user.id, session.access_token);
+    }
+  };
+
   const value = {
     user,
     session,
@@ -152,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     updateCredits,
     credits,
+    refreshCredits,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

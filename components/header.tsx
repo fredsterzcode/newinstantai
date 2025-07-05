@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { LogOut, Sparkles, User } from '@/lib/icons';
+import { LogOut, Sparkles, User, RefreshCw } from '@/lib/icons';
 
 export function Header() {
-  const { user, signOut, credits } = useAuth();
+  const { user, signOut, credits, refreshCredits } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg">
@@ -35,6 +35,9 @@ export function Header() {
             <>
               <div className="hidden md:flex items-center space-x-2 bg-primary/10 text-primary px-3 py-1 rounded-full">
                 <span className="text-sm font-medium">{credits} credits</span>
+                <button onClick={refreshCredits} title="Refresh credits" className="ml-1 p-1 rounded hover:bg-primary/20">
+                  <RefreshCw className="h-4 w-4" />
+                </button>
               </div>
               <div className="hidden md:flex items-center space-x-2 bg-muted px-3 py-1 rounded-full">
                 <User className="h-4 w-4" />
