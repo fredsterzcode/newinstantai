@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserCredits(session.user.id);
+        fetchUserCredits(session.user.id, session.access_token);
       }
       setLoading(false);
       console.log('Initial session:', session);
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchUserCredits(session.user.id);
+        await fetchUserCredits(session.user.id, session.access_token);
       } else {
         setCredits(0);
       }
@@ -73,26 +73,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      console.log('User changed, fetching credits for:', user.id);
-      fetchUserCredits(user.id);
-    }
-  }, [user]);
-
-  const fetchUserCredits = async (userId: string) => {
-    console.log('Fetching credits for user:', userId);
-    const { data, error } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('id', userId)
-      .single();
-
-    if (!error && data) {
-      setCredits(data.credits);
-      console.log('Fetched credits:', data.credits);
-    } else if (error) {
+    if (user && session) {
+      console.log('User and session present, fetching credits for:', user.id);
+      fetchUserCredits(user.id, session.access_token);
+    } else if (!user) {
       setCredits(0);
-      console.error('Error fetching credits:', error);
+      console.log('No user, credits set to 0');
+    }
+  }, [user, session]);
+
+  const fetchUserCredits = async (userId: string, accessToken?: string) => {
+    console.log('Fetching credits for user:', userId, 'with token:', !!accessToken);
+    try {
+      const { data, error, status } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', userId)
+        .single();
+      if (!error && data) {
+        setCredits(data.credits);
+        console.log('Fetched credits:', data.credits);
+      } else if (error) {
+        console.error('Error fetching credits:', error, 'Status:', status);
+        // Only set credits to 0 if user is null
+        if (!user) setCredits(0);
+      }
+    } catch (err) {
+      console.error('Exception fetching credits:', err);
+      // Only set credits to 0 if user is null
+      if (!user) setCredits(0);
     }
   };
 

@@ -1,5 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Create a Supabase client with service role key for server-side operations
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+// Service role client (server-side only, never expose to client)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
+
+// Regular client for auth verification
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,19 +37,25 @@ export async function POST(req: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return NextResponse.json({ error: 'Invalid authentication' }, { status: 401 });
     }
 
-    // Check user credits
-    const { data: userData, error: userError } = await supabase
+    console.log('Authenticated user:', user.id);
+
+    // Check user credits using service role client
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('credits')
       .eq('id', user.id)
       .single();
 
     if (userError || !userData) {
+      console.error('User lookup error:', userError);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    console.log('User credits:', userData.credits);
 
     if (userData.credits < 1) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
@@ -88,8 +112,10 @@ The website should be production-ready and visually appealing.`,
       html = html.replace(/^```html/, '').replace(/```$/, '').trim();
     }
 
-    // Save website to database
-    const { data: website, error: saveError } = await supabase
+    console.log('Generated HTML length:', html.length);
+
+    // Save website to database using service role client
+    const { data: website, error: saveError } = await supabaseAdmin
       .from('websites')
       .insert([{ 
         user_id: user.id,
@@ -105,18 +131,23 @@ The website should be production-ready and visually appealing.`,
       return NextResponse.json({ error: 'Failed to save website' }, { status: 500 });
     }
 
-    // Deduct credit from user
-    const { error: creditError } = await supabase
+    console.log('Website saved with ID:', website.id);
+
+    // Deduct credit from user using service role client
+    const { error: creditError } = await supabaseAdmin
       .from('users')
       .update({ credits: userData.credits - 1 })
       .eq('id', user.id);
 
     if (creditError) {
       console.error('Credit update error:', creditError);
-      // Don't fail the request if credit update fails
+      // Don't fail the request if credit update fails, but log it
+    } else {
+      console.log('Credits updated successfully');
     }
 
     return NextResponse.json({ 
+      html,
       website,
       remainingCredits: userData.credits - 1
     });
