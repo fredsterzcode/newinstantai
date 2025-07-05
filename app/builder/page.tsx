@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import { Header } from '@/components/header';
 import { WebsiteBuilder } from '@/components/website-builder';
 
@@ -23,9 +23,9 @@ function BuilderContent() {
 
 export default function BuilderPage() {
   return (
-    <AuthProvider>
+    <>
       <Header />
       <BuilderContent />
-    </AuthProvider>
+    </>
   );
 } 
