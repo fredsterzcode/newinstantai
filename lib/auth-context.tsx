@@ -84,23 +84,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserCredits = async (userId: string, accessToken?: string) => {
     console.log('Fetching credits for user:', userId, 'with token:', !!accessToken);
+    if (!accessToken) {
+      console.error('No access token, cannot fetch credits');
+      return;
+    }
     try {
-      const { data, error, status } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('id', userId)
-        .single();
-      if (!error && data) {
+      const res = await fetch('/api/get-credits', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      const data = await res.json();
+      if (res.ok && typeof data.credits === 'number') {
         setCredits(data.credits);
-        console.log('Fetched credits:', data.credits);
-      } else if (error) {
-        console.error('Error fetching credits:', error, 'Status:', status);
+        console.log('Fetched credits from API:', data.credits);
+      } else {
+        console.error('Error fetching credits from API:', data.error);
         // Only set credits to 0 if user is null
         if (!user) setCredits(0);
       }
     } catch (err) {
-      console.error('Exception fetching credits:', err);
-      // Only set credits to 0 if user is null
+      console.error('Exception fetching credits from API:', err);
       if (!user) setCredits(0);
     }
   };
