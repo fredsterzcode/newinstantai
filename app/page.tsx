@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Zap, Globe, Download, ArrowRight, Check } from '@/lib/icons';
 
 // Simple loading component
@@ -14,7 +14,7 @@ function LoadingSpinner() {
 }
 
 // Landing page content (no auth dependencies)
-function LandingPage() {
+function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -38,7 +38,7 @@ function LandingPage() {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="btn-primary text-lg px-8 py-4">
+              <button className="btn-primary text-lg px-8 py-4" onClick={onGetStarted}>
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </button>
@@ -194,7 +194,7 @@ function LandingPage() {
                   </li>
                 </ul>
                 
-                <button className="btn-primary w-full">
+                <button className="btn-primary w-full" onClick={onGetStarted}>
                   Get Started
                 </button>
               </div>
@@ -213,76 +213,60 @@ function LandingPage() {
             Join thousands of creators who are building amazing websites with AI. 
             Start your journey today.
           </p>
-          <button className="btn-primary text-lg px-8 py-4">
+          <button className="btn-primary text-lg px-8 py-4" onClick={onGetStarted}>
             Start Building Now
             <ArrowRight className="ml-2 h-5 w-5" />
           </button>
         </div>
       </section>
-
-      {/* Auth Modal */}
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="card">
-            <div className="card-header text-center">
-              <h1 className="card-title">Welcome to InstantList.ai</h1>
-              <p className="card-description">
-                Sign in to start building amazing websites with AI
-              </p>
-            </div>
-            <div className="card-content text-center">
-              <p className="text-muted-foreground">
-                Authentication is loading...
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
 
 // Main component that conditionally loads auth
 export default function HomePage() {
-  const [isClient, setIsClient] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <LandingPage />;
+  // Dynamically import AuthProvider and useAuth only when needed
+  let AuthProvider, useAuth, AuthForm, WebsiteBuilder, Header;
+  if (showAuth || isAuthed) {
+    AuthProvider = require('@/lib/auth-context').AuthProvider;
+    useAuth = require('@/lib/auth-context').useAuth;
+    AuthForm = require('@/components/auth-form').AuthForm;
+    WebsiteBuilder = require('@/components/website-builder').WebsiteBuilder;
+    Header = require('@/components/header').Header;
   }
 
-  // Only import auth components after client-side hydration
-  const { AuthProvider } = require('@/lib/auth-context');
-  const { useAuth } = require('@/lib/auth-context');
-  const { AuthForm } = require('@/components/auth-form');
-  const { WebsiteBuilder } = require('@/components/website-builder');
-  const { Header } = require('@/components/header');
-
-  function HomeContent() {
+  // Authenticated app content
+  function AppContent() {
     const { user, loading } = useAuth();
-
-    if (loading) {
-      return <LoadingSpinner />;
-    }
-
-    if (user) {
-      return (
-        <div className="min-h-screen bg-background">
-          <Header />
-          <WebsiteBuilder />
-        </div>
-      );
-    }
-
-    return <LandingPage />;
+    if (loading) return null;
+    if (user) return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <WebsiteBuilder />
+      </div>
+    );
+    // If not authed, close modal and show landing page
+    setShowAuth(false);
+    return null;
   }
 
   return (
-    <AuthProvider>
-      <HomeContent />
-    </AuthProvider>
+    <>
+      <LandingPage onGetStarted={() => setShowAuth(true)} />
+      {showAuth && AuthProvider && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-md">
+            <AuthProvider>
+              <AuthForm />
+              <AppContent />
+            </AuthProvider>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
