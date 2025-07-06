@@ -43,24 +43,6 @@ export async function POST(req: NextRequest) {
 
     console.log('Authenticated user:', user.id);
 
-    // Check user credits using service role client
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('credits')
-      .eq('id', user.id)
-      .single();
-
-    if (userError || !userData) {
-      console.error('User lookup error:', userError);
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    console.log('User credits:', userData.credits);
-
-    if (userData.credits < 1) {
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
-    }
-
     // Check if OpenAI API key is available
     if (!process.env.OPENAI_API_KEY) {
       console.error('OpenAI API key not configured');
@@ -143,25 +125,7 @@ The website should be production-ready and visually appealing.`,
 
     console.log('Website saved with ID:', website.id);
 
-    // Deduct credit from user using service role client
-    const newCredits = userData.credits - 1;
-    const { error: creditError } = await supabaseAdmin
-      .from('users')
-      .update({ credits: newCredits })
-      .eq('id', user.id);
-
-    if (creditError) {
-      console.error('Credit update error:', creditError);
-      // Log the error but don't fail the request since the website was generated successfully
-      // The user can refresh their credits manually if needed
-    } else {
-      console.log('Credits updated successfully:', newCredits);
-    }
-
-    return NextResponse.json({ 
-      website,
-      remainingCredits: newCredits
-    });
+    return NextResponse.json({ website });
 
   } catch (error) {
     console.error('API error:', error);
