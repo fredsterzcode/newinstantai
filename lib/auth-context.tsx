@@ -26,19 +26,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [credits, setCredits] = useState<number | null>(null);
 
-  // Fetch credits from API
+  // Fetch credits directly from Supabase
   const fetchCredits = async () => {
-    if (!session?.access_token) {
+    if (!user) {
       setCredits(null);
       return;
     }
     try {
-      const res = await fetch('/api/credits', {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-      });
-      const data = await res.json();
-      if (res.ok && typeof data.credits === 'number') {
+      const { data, error } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', user.id)
+        .single();
+      if (!error && data && typeof data.credits === 'number') {
         setCredits(data.credits);
       } else {
         setCredits(null);
@@ -48,15 +48,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Update credits via API (admin only for now)
+  // Update credits via API route (for secure mutations)
   const updateCredits = async (newCredits: number) => {
-    if (!user || !session?.access_token) return;
+    if (!user) return;
     try {
-      const res = await fetch('/api/credits', {
+      const res = await fetch('/api/credits-mutate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ userId: user.id, credits: newCredits }),
       });
@@ -69,66 +68,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('AuthProvider useEffect running');
     let timeoutId: NodeJS.Timeout;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
-      console.log('Supabase env vars missing');
       return;
     }
-    // Fallback: always set loading to false after 5 seconds
-    timeoutId = setTimeout(() => {
-      setLoading(false);
-      console.log('AuthProvider fallback: loading set to false after timeout');
-    }, 5000);
+    timeoutId = setTimeout(() => setLoading(false), 5000);
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeoutId);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      console.log('Initial session:', session);
-      console.log('After getSession: user', session?.user, 'session', session, 'loading', false);
       if (session?.user) fetchCredits();
-    }).catch((err) => {
+    }).catch(() => {
       clearTimeout(timeoutId);
       setLoading(false);
-      console.error('Error fetching session:', err);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      console.log('Auth state changed:', event, session);
-      console.log('After onAuthStateChange: user', session?.user, 'session', session, 'loading', false);
       if (session?.user) fetchCredits();
       else setCredits(null);
     });
     return () => {
       clearTimeout(timeoutId);
       subscription.unsubscribe();
-      console.log('AuthProvider useEffect cleanup');
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
-
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signUp({ email, password });
     return { error };
   };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const signOut = async () => { await supabase.auth.signOut(); };
 
   const value = {
     user,
