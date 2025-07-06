@@ -61,6 +61,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
     }
 
+    // Check if OpenAI API key is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key not configured');
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 500 });
+    }
+
     // Generate website with OpenAI
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -112,6 +118,10 @@ The website should be production-ready and visually appealing.`,
       html = html.replace(/^```html/, '').replace(/```$/, '').trim();
     }
 
+    if (!html) {
+      return NextResponse.json({ error: 'Failed to generate website content' }, { status: 500 });
+    }
+
     console.log('Generated HTML length:', html.length);
 
     // Save website to database using service role client
@@ -134,22 +144,23 @@ The website should be production-ready and visually appealing.`,
     console.log('Website saved with ID:', website.id);
 
     // Deduct credit from user using service role client
+    const newCredits = userData.credits - 1;
     const { error: creditError } = await supabaseAdmin
       .from('users')
-      .update({ credits: userData.credits - 1 })
+      .update({ credits: newCredits })
       .eq('id', user.id);
 
     if (creditError) {
       console.error('Credit update error:', creditError);
-      // Don't fail the request if credit update fails, but log it
+      // Log the error but don't fail the request since the website was generated successfully
+      // The user can refresh their credits manually if needed
     } else {
-      console.log('Credits updated successfully');
+      console.log('Credits updated successfully:', newCredits);
     }
 
     return NextResponse.json({ 
-      html,
       website,
-      remainingCredits: userData.credits - 1
+      remainingCredits: newCredits
     });
 
   } catch (error) {

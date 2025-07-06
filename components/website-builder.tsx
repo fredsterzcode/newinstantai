@@ -18,7 +18,7 @@ export function WebsiteBuilder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
-  const { user, credits, updateCredits } = useAuth();
+  const { user, credits, updateCredits, session, refreshCredits } = useAuth();
   const [chat, setChat] = useState<{ role: 'user' | 'ai'; content: string; html?: string }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -32,25 +32,40 @@ export function WebsiteBuilder() {
     setLoading(true);
     setError('');
     setChat((prev) => [...prev, { role: 'user', content: prompt }]);
+    const currentPrompt = prompt;
     setPrompt('');
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (!token) {
+        setError('Authentication required. Please sign in again.');
+        return;
+      }
+      
       const response = await fetch('/api/generate-site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: currentPrompt }),
       });
+      
       const data = await response.json();
       if (data.error) {
         setError(data.error);
+        // Remove the user message if there was an error
+        setChat((prev) => prev.slice(0, -1));
       } else {
         setCurrentWebsite(data.website);
         setChat((prev) => [...prev, { role: 'ai', content: 'Here is your website!', html: data.website.html }]);
-        await updateCredits(data.remainingCredits);
+        // Update credits with the remaining credits from the API response
+        if (typeof data.remainingCredits === 'number') {
+          await updateCredits(data.remainingCredits);
+        }
       }
     } catch (err) {
+      console.error('Error generating website:', err);
       setError('Failed to generate website. Please try again.');
+      // Remove the user message if there was an error
+      setChat((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
     }
@@ -65,12 +80,18 @@ export function WebsiteBuilder() {
 
     setLoading(true);
     setError('');
+    const improvementPrompt = prompt;
+    setPrompt('');
 
     try {
-      const improvementPrompt = `Improve this website based on the following feedback: ${prompt}. Current website: ${currentWebsite.html}`;
+      const improvementRequest = `Improve this website based on the following feedback: ${improvementPrompt}. Current website: ${currentWebsite.html}`;
       
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      if (!token) {
+        setError('Authentication required. Please sign in again.');
+        return;
+      }
 
       const response = await fetch('/api/generate-site', {
         method: 'POST',
@@ -78,7 +99,7 @@ export function WebsiteBuilder() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ prompt: improvementPrompt }),
+        body: JSON.stringify({ prompt: improvementRequest }),
       });
 
       const data = await response.json();
@@ -87,9 +108,14 @@ export function WebsiteBuilder() {
         setError(data.error);
       } else {
         setCurrentWebsite(data.website);
-        await updateCredits(data.remainingCredits);
+        setChat((prev) => [...prev, { role: 'user', content: improvementPrompt }, { role: 'ai', content: 'Website improved!', html: data.website.html }]);
+        // Update credits with the remaining credits from the API response
+        if (typeof data.remainingCredits === 'number') {
+          await updateCredits(data.remainingCredits);
+        }
       }
     } catch (err) {
+      console.error('Error improving website:', err);
       setError('Failed to improve website. Please try again.');
     } finally {
       setLoading(false);
@@ -112,6 +138,42 @@ export function WebsiteBuilder() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Debug Section - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Debug Info</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium">User:</span> {user ? user.email : 'Not signed in'}
+            </div>
+            <div>
+              <span className="font-medium">Credits:</span> {credits}
+            </div>
+            <div>
+              <span className="font-medium">Session:</span> {session ? 'Active' : 'None'}
+            </div>
+            <div>
+              <span className="font-medium">Loading:</span> {loading ? 'Yes' : 'No'}
+            </div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button 
+              onClick={refreshCredits}
+              className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+            >
+              Refresh Credits
+            </button>
+            <a 
+              href="/api/test-env" 
+              target="_blank"
+              className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600"
+            >
+              Test Environment
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-[70vh]">
         {/* Chat Interface */}
         <div className="flex flex-col h-full bg-white/90 rounded-2xl shadow-xl border-2 border-primary/10">

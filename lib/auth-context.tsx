@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('Fetching credits for user:', userId, 'with token:', !!accessToken);
     if (!accessToken) {
       console.error('No access token, cannot fetch credits');
+      setCredits(0);
       return;
     }
     try {
@@ -86,30 +87,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+      
+      if (!res.ok) {
+        console.error('Failed to fetch credits:', res.status, res.statusText);
+        setCredits(0);
+        return;
+      }
+      
       const data = await res.json();
-      if (res.ok && typeof data.credits === 'number') {
+      if (typeof data.credits === 'number') {
         setCredits(data.credits);
         console.log('Fetched credits from API:', data.credits);
       } else {
-        console.error('Error fetching credits from API:', data.error);
-        // Only set credits to 0 if user is null
-        if (!user) setCredits(0);
+        console.error('Invalid credits data from API:', data);
+        setCredits(0);
       }
     } catch (err) {
       console.error('Exception fetching credits from API:', err);
-      if (!user) setCredits(0);
+      setCredits(0);
     }
   };
 
   const updateCredits = async (newCredits: number) => {
-    if (!user || !session) return;
-    const { error } = await supabase
-      .from('users')
-      .update({ credits: newCredits })
-      .eq('id', user.id);
-    if (!error) {
-      // Instead of setting credits directly, re-fetch from API for consistency
+    if (!user || !session?.access_token) {
+      console.error('Cannot update credits: no user or session');
+      return;
+    }
+    
+    // Update local state immediately for better UX
+    setCredits(newCredits);
+    
+    // Then refresh from server to ensure consistency
+    try {
       await fetchUserCredits(user.id, session.access_token);
+    } catch (err) {
+      console.error('Failed to refresh credits after update:', err);
     }
   };
 
@@ -135,8 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Add a manual refreshCredits function for debugging/UI
   const refreshCredits = async () => {
-    if (user && session) {
+    if (user && session?.access_token) {
       await fetchUserCredits(user.id, session.access_token);
+    } else {
+      console.error('Cannot refresh credits: no user or session');
     }
   };
 
